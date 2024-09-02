@@ -1,6 +1,8 @@
 # Import necessary libraries
+#! C:\Users\amanu\OneDrive\Desktop\Stock-Market-Analysis\.venv\Scripts\python.exe
 import os
 import sys
+import talib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -199,3 +201,78 @@ if __name__ == "__main__":
     raw_analyst_ratings_df = pd.read_csv('C:/Users/amanu/OneDrive/Desktop/Stock-Market-Analysis/data/raw_analyst_ratings.csv')
     descriptive_statistics(raw_analyst_ratings_df)
     analyze_data(raw_analyst_ratings_df, 'headline')
+
+
+def analyze_stock_data(file_path):
+    # Load the CSV file into a DataFrame
+    data = pd.read_csv(file_path)
+
+    # Display the first few rows of the DataFrame to check the data
+    print("First few rows of the data:")
+    print(data.head())
+
+    # Check for missing values
+    print("\nMissing values:")
+    print(data.isnull().sum())
+
+    # Convert the 'Date' column to datetime format
+    data['Date'] = pd.to_datetime(data['Date'])
+
+    # Set the 'Date' column as the index
+    data.set_index('Date', inplace=True)
+
+    # Display the data types of the columns
+    print("\nData types of columns:")
+    print(data.dtypes)
+
+    # Ensure the relevant columns are in the correct format
+    data['Open'] = data['Open'].astype(float)
+    data['High'] = data['High'].astype(float)
+    data['Low'] = data['Low'].astype(float)
+    data['Close'] = data['Close'].astype(float)
+    data['Volume'] = data['Volume'].astype(int)
+    data['Adj Close'] = data['Adj Close'].astype(float)
+    data['Dividends'] = data['Dividends'].astype(float)
+    data['Stock Splits'] = data['Stock Splits'].astype(float)
+
+    # Display the cleaned DataFrame
+    print("\nCleaned DataFrame info:")
+    print(data.info())
+
+    # Calculate Simple Moving Averages (SMA)
+    data['SMA_20'] = talib.SMA(data['Close'], timeperiod=20)
+    data['SMA_50'] = talib.SMA(data['Close'], timeperiod=50)
+
+    # Calculate Exponential Moving Averages (EMA)
+    data['EMA_20'] = talib.EMA(data['Close'], timeperiod=20)
+    data['EMA_50'] = talib.EMA(data['Close'], timeperiod=50)
+
+    # Calculate Relative Strength Index (RSI)
+    data['RSI_14'] = talib.RSI(data['Close'], timeperiod=14)
+
+    # Calculate MACD (Moving Average Convergence Divergence)
+    data['MACD'], data['MACD_signal'], data['MACD_hist'] = talib.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
+
+    # Display the first few rows with the new indicators
+    print("\nFirst few rows with technical indicators:")
+    print(data[['Close', 'SMA_20', 'SMA_50', 'EMA_20', 'EMA_50', 'RSI_14', 'MACD', 'MACD_signal', 'MACD_hist']].head())
+
+    # Plotting the Close price along with SMAs
+    plt.figure(figsize=(14, 7))
+    plt.plot(data['Close'], label='Close Price', color='black')
+    plt.plot(data['SMA_20'], label='SMA 20', color='blue')
+    plt.plot(data['SMA_50'], label='SMA 50', color='red')
+    plt.title('Close Price with SMAs')
+    plt.legend()
+    plt.show()
+
+    # Plotting RSI
+    plt.figure(figsize=(14, 7))
+    plt.plot(data['RSI_14'], label='RSI 14', color='purple')
+    plt.title('RSI 14')
+    plt.axhline(70, color='red', linestyle='--')
+    plt.axhline(30, color='green', linestyle='--')
+    plt.legend()
+    plt.show()
+
+    return data
