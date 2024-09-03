@@ -276,3 +276,133 @@ def analyze_stock_data(file_path):
     plt.show()
 
     return data
+import os
+import sys
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import pandas as pd
+
+def perform_sentiment_analysis(input_file_path, output_file_path):
+    """
+    Performs sentiment analysis on a CSV file containing news headlines.
+
+    Args:
+        input_file_path (str): Path to the input CSV file.
+        output_file_path (str): Path to the output CSV file.
+
+    Returns:
+        None
+    """
+
+    # Get the current working directory
+    current_dir = os.getcwd()
+    print(current_dir)
+
+    # Get the parent directory
+    parent_dir = os.path.dirname(current_dir)
+    print(parent_dir)
+
+    # Insert the path to the parent directory
+    sys.path.insert(0, parent_dir)
+
+    # Download the vader_lexicon if not already downloaded
+    nltk.download('vader_lexicon')
+
+    # Read the CSV file
+    data = pd.read_csv(input_file_path)
+    print(data.head())
+    print(data.isnull().sum())
+    data.info()
+    print(data.shape)
+
+    # Check for time data
+    time_data = data['date'].apply(lambda x: len(x.split()) > 1)
+    print(time_data.sum())
+
+    # Create a copy of the data for sentiment analysis
+    sentiment_data = data.copy()
+
+    # Initialize the SentimentIntensityAnalyzer
+    sia = SentimentIntensityAnalyzer()
+
+    # Calculate the sentiment of the headlines
+    sentiment_data['sentiment'] = sentiment_data['headline'].apply(lambda x: sia.polarity_scores(text=x)['compound'])
+
+    # Select the columns to save
+    columns_to_save = ['date', 'stock', 'sentiment']
+    new_df = sentiment_data[columns_to_save]
+
+    # Save the new DataFrame to a CSV file
+    new_df.to_csv(output_file_path, index=False)
+
+    # Categorize the sentiment scores
+    sentiment_data['sentiment_category'] = pd.cut(sentiment_data['sentiment'], bins=[-1, -0.5, -0.0001, 0.5, 1], labels=['Very Negative', 'Negative', 'Neutral', 'Positive'])
+    print(sentiment_data)
+    print(sentiment_data['sentiment_category'].value_counts())
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def analyze_correlation(news_file_path, stock_file_path, stock_symbol):
+    """
+    Analyzes the correlation between news sentiment and stock returns.
+
+    Args:
+        news_file_path (str): Path to the news CSV file.
+        stock_file_path (str): Path to the stock CSV file.
+        stock_symbol (str): Stock symbol (e.g. 'AMZN', 'AAPL', etc.).
+
+    Returns:
+        None
+    """
+
+    # Load the datasets
+    news_df = pd.read_csv(news_file_path)
+    stock_df = pd.read_csv(stock_file_path)
+
+    # Print DataFrame columns
+    print("News DataFrame columns:")
+    print(news_df.columns)
+    print("\nStock DataFrame columns:")
+    print(stock_df.columns)
+
+    # Convert 'date' column to pandas datetime, removing any timezone information
+    stock_df['Date'] = pd.to_datetime(stock_df['Date'])
+    stock_df['Date'] = stock_df['Date'].dt.date
+
+    news_df['date'] = pd.to_datetime(news_df['date'], utc=True).dt.tz_localize(None)
+    news_df['date'] = news_df['date'].dt.date
+    news_df = news_df.rename(columns={'date': 'Date'})
+
+    # Filter the data for the desired stock
+    news_df = news_df[news_df['stock'] == stock_symbol]
+
+    # Align sentiment and stock data by dates
+    merged_df = pd.merge(news_df, stock_df, on='Date')
+
+    # Calculate daily returns
+    merged_df["stock_returns"] = merged_df['Close'].pct_change()
+
+    # Calculate the correlation between sentiment and stock returns
+    correlation = merged_df['sentiment'].corr(merged_df['Close'])
+    print(correlation)
+
+    # Create a scatter plot
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(x='sentiment', y='Close', data=merged_df)
+
+    # Add a regression line
+    sns.regplot(x='sentiment', y='Close', data=merged_df, ci=None)
+
+    # Set title and labels
+    plt.title(f'Correlation between News Sentiment and {stock_symbol} Stock Returns')
+    plt.xlabel('Sentiment Score')
+    plt.ylabel('Daily Returns')
+
+    # Display the correlation coefficient
+    plt.text(0.5, 0.9, f'r = {correlation:.2f}', transform=plt.gca().transAxes, ha='center')
+
+    # Show the plot
+    plt.show()
+
